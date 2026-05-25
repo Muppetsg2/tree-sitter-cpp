@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(tree-sitter-cpp
-        VERSION "0.23.4"
+        VERSION "0.23.6"
         DESCRIPTION "C++ grammar for tree-sitter"
         HOMEPAGE_URL "https://github.com/tree-sitter/tree-sitter-cpp"
         LANGUAGES C)
@@ -15,7 +15,7 @@ if(NOT ${TREE_SITTER_ABI_VERSION} MATCHES "^[0-9]+$")
     message(FATAL_ERROR "TREE_SITTER_ABI_VERSION must be an integer")
 endif()
 
-find_program(TREE_SITTER_CLI tree-sitter DOC "Tree-sitter CLI")
+find_program(TREE_SITTER_CLI tree-sitter DOC "Tree-sitter CLI" REQUIRED)
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/src/parser.c"
                    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/grammar.json"

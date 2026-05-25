@@ -95,6 +95,7 @@ using a;
 using ::b;
 using c::d;
 using ::e::f::g;
+using c::d, ::b, f::g;
 using h = i::j;
 using namespace std;
 using enum Foo;
@@ -125,6 +126,15 @@ using foobar [[deprecated]] [[maybe_unused]] = int;
         (qualified_identifier
           (namespace_identifier)
           (identifier)))))
+  (using_declaration
+    (qualified_identifier
+      (namespace_identifier)
+      (identifier))
+    (qualified_identifier
+      (identifier))
+    (qualified_identifier
+      (namespace_identifier)
+      (identifier)))
   (alias_declaration
     (type_identifier)
     (type_descriptor
@@ -2298,6 +2308,66 @@ int main() {
               (field_identifier)))
           (argument_list)))
       (return_statement
+        (number_literal)))))
+
+================================================================================
+Anonymous pointer-to-member declarators (using, sizeof, cast)
+================================================================================
+
+struct C;
+using F = void (C::*)(int);
+auto  s = sizeof(void (C::*)(int));
+auto  x = (void (C::*)(int))0;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (struct_specifier
+    (type_identifier))
+  (alias_declaration
+    (type_identifier)
+    (type_descriptor
+      (primitive_type)
+      (abstract_function_declarator
+        (abstract_parenthesized_declarator
+          (qualified_identifier
+            (namespace_identifier)
+            (abstract_pointer_declarator)))
+        (parameter_list
+          (parameter_declaration
+            (primitive_type))))))
+  (declaration
+    (placeholder_type_specifier
+      (auto))
+    (init_declarator
+      (identifier)
+      (sizeof_expression
+        (type_descriptor
+          (primitive_type)
+          (abstract_function_declarator
+            (abstract_parenthesized_declarator
+              (qualified_identifier
+                (namespace_identifier)
+                (abstract_pointer_declarator)))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type))))))))
+  (declaration
+    (placeholder_type_specifier
+      (auto))
+    (init_declarator
+      (identifier)
+      (cast_expression
+        (type_descriptor
+          (primitive_type)
+          (abstract_function_declarator
+            (abstract_parenthesized_declarator
+              (qualified_identifier
+                (namespace_identifier)
+                (abstract_pointer_declarator)))
+            (parameter_list
+              (parameter_declaration
+                (primitive_type)))))
         (number_literal)))))
 
 ================================================================================

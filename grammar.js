@@ -80,6 +80,8 @@ module.exports = grammar(C, {
     [$.template_function, $.template_type, $.expression],
     [$.template_function, $.template_type, $.qualified_identifier],
     [$.template_function, $.template_type, $.qualified_identifier, $.qualified_type_identifier],
+    [$._type_declarator, $.sized_type_specifier],
+    [$._type_declarator, $.type_specifier],
     [$.template_type, $.qualified_type_identifier],
     [$.qualified_type_identifier, $.qualified_identifier],
     [$.comma_expression, $.initializer_list],
@@ -712,6 +714,7 @@ module.exports = grammar(C, {
     _abstract_declarator: ($, original) => choice(
       original,
       $.abstract_reference_declarator,
+      alias($.abstract_qualified_identifier, $.qualified_identifier),
     ),
 
     reference_declarator: $ => prec.dynamic(1, prec.right(seq(choice('&', '&&'), $._declarator))),
@@ -861,11 +864,21 @@ module.exports = grammar(C, {
     using_declaration: $ => seq(
       repeat($.attribute_declaration),
       'using',
-      optional(choice('namespace', 'enum')),
       choice(
-        $.identifier,
-        $.qualified_identifier,
-        $.splice_type_specifier,
+        seq(
+          choice('namespace', 'enum'),
+          choice(
+              $.identifier,
+              $.qualified_identifier,
+              $.splice_type_specifier,
+          ),
+        ),
+        commaSep1(
+          choice(
+            $.identifier,
+            $.qualified_identifier,
+          ),
+        ),
       ),
       ';',
     ),
@@ -1438,6 +1451,14 @@ module.exports = grammar(C, {
         $.operator_name,
         $.destructor_name,
         $.pointer_type_declarator,
+      )),
+    ),
+
+    abstract_qualified_identifier: $ => seq(
+      $._scope_resolution,
+      field('name', choice(
+        alias($.abstract_qualified_identifier, $.qualified_identifier),
+        $.abstract_pointer_declarator,
       )),
     ),
 

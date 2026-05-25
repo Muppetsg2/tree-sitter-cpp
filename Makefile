@@ -4,7 +4,7 @@ endif
 
 LANGUAGE_NAME := tree-sitter-cpp
 HOMEPAGE_URL := https://github.com/tree-sitter/tree-sitter-cpp
-VERSION := 0.23.4
+VERSION := 0.23.6
 
 # repository
 SRC_DIR := src
