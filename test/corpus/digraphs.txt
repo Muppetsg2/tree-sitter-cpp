@@ -1,0 +1,185 @@
+================================================================================
+Digraphs for brackets and braces
+================================================================================
+
+int a<:3:> = <%1, 2, 3%>;
+
+void f() <%
+  a<:0:> = b<:i:><:j:>;
+  auto l = <:&:>(int x) <% return x; %>;
+%>
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (array_declarator
+        (identifier)
+        (number_literal))
+      (initializer_list
+        (number_literal)
+        (number_literal)
+        (number_literal))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (expression_statement
+        (assignment_expression
+          (subscript_expression
+            (identifier)
+            (subscript_argument_list
+              (number_literal)))
+          (subscript_expression
+            (subscript_expression
+              (identifier)
+              (subscript_argument_list
+                (identifier)))
+            (subscript_argument_list
+              (identifier)))))
+      (declaration
+        (placeholder_type_specifier
+          (auto))
+        (init_declarator
+          (identifier)
+          (lambda_expression
+            (lambda_capture_specifier
+              (lambda_default_capture))
+            (lambda_declarator
+              (parameter_list
+                (parameter_declaration
+                  (primitive_type)
+                  (identifier))))
+            (compound_statement
+              (return_statement
+                (identifier)))))))))
+
+================================================================================
+Digraphs in attributes
+================================================================================
+
+<:<:nodiscard:>:> int f();
+<:<:deprecated("old"):>:> void g();
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (attribute_declaration
+      (attribute
+        (identifier)))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list)))
+  (declaration
+    (attribute_declaration
+      (attribute
+        (identifier)
+        (argument_list
+          (string_literal
+            (string_content)))))
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))))
+
+================================================================================
+Less-than followed by scope resolution is not a digraph
+================================================================================
+
+std::vector<::std::string> v;
+A<::B> b;
+bool c = p<::q::r;
+auto d = a<::>;
+auto e = b<:::c:>;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (qualified_identifier
+      (namespace_identifier)
+      (template_type
+        (type_identifier)
+        (template_argument_list
+          (type_descriptor
+            (qualified_identifier
+              (qualified_identifier
+                (namespace_identifier)
+                (type_identifier)))))))
+    (identifier))
+  (declaration
+    (template_type
+      (type_identifier)
+      (template_argument_list
+        (type_descriptor
+          (qualified_identifier
+            (type_identifier)))))
+    (identifier))
+  (declaration
+    (primitive_type)
+    (init_declarator
+      (identifier)
+      (binary_expression
+        (identifier)
+        (qualified_identifier
+          (qualified_identifier
+            (namespace_identifier)
+            (identifier))))))
+  (declaration
+    (placeholder_type_specifier
+      (auto))
+    (init_declarator
+      (identifier)
+      (subscript_expression
+        (identifier)
+        (subscript_argument_list))))
+  (declaration
+    (placeholder_type_specifier
+      (auto))
+    (init_declarator
+      (identifier)
+      (subscript_expression
+        (identifier)
+        (subscript_argument_list
+          (qualified_identifier
+            (identifier)))))))
+
+================================================================================
+Digraphs for preprocessor directives
+================================================================================
+
+%:include <vector>
+%:define X 1
+%:if X
+int y;
+%:else
+int z;
+%:endif
+%:pragma once
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (preproc_include
+    (system_lib_string))
+  (preproc_def
+    (identifier)
+    (preproc_arg))
+  (preproc_if
+    (identifier)
+    (declaration
+      (primitive_type)
+      (identifier))
+    (preproc_else
+      (declaration
+        (primitive_type)
+        (identifier))))
+  (preproc_call
+    (preproc_directive)
+    (preproc_arg)))

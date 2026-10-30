@@ -1818,3 +1818,133 @@ char32_t d = U'\N{GREEK SMALL LETTER ALPHA}';
       (identifier)
       (char_literal
         (escape_sequence)))))
+
+================================================================================
+Pointer-to-member access through a pointer
+================================================================================
+
+void f() {
+  (ptr->*pmf)(1, 2);
+  int v = ptr->*pm;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (parenthesized_expression
+            (field_expression
+              (identifier)
+              (field_identifier)))
+          (argument_list
+            (number_literal)
+            (number_literal))))
+      (declaration
+        (primitive_type)
+        (init_declarator
+          (identifier)
+          (field_expression
+            (identifier)
+            (field_identifier)))))))
+
+================================================================================
+New expressions with pointer, qualified and parenthesized types
+================================================================================
+
+void f() {
+  new int *[5];
+  new char **;
+  new const int *(nullptr);
+  new (int *[5]);
+  new (buf) (int *[5]);
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (expression_statement
+        (new_expression
+          (primitive_type)
+          (new_declarator
+            (new_declarator
+              (number_literal)))))
+      (expression_statement
+        (new_expression
+          (primitive_type)
+          (new_declarator
+            (new_declarator))))
+      (expression_statement
+        (new_expression
+          (type_qualifier)
+          (primitive_type)
+          (new_declarator)
+          (argument_list
+            (null))))
+      (expression_statement
+        (new_expression
+          (type_descriptor
+            (primitive_type)
+            (abstract_pointer_declarator
+              (abstract_array_declarator
+                (number_literal))))))
+      (expression_statement
+        (new_expression
+          (argument_list
+            (identifier))
+          (type_descriptor
+            (primitive_type)
+            (abstract_pointer_declarator
+              (abstract_array_declarator
+                (number_literal)))))))))
+
+================================================================================
+Qualified destructor calls
+================================================================================
+
+void f() {
+  p->S::~S();
+  x.N::S::~S();
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (expression_statement
+        (call_expression
+          (field_expression
+            (identifier)
+            (qualified_identifier
+              (namespace_identifier)
+              (destructor_name
+                (identifier))))
+          (argument_list)))
+      (expression_statement
+        (call_expression
+          (field_expression
+            (identifier)
+            (qualified_identifier
+              (namespace_identifier)
+              (qualified_identifier
+                (namespace_identifier)
+                (destructor_name
+                  (identifier)))))
+          (argument_list))))))

@@ -775,6 +775,10 @@
         {
           "type": "preproc_defined",
           "named": true
+        },
+        {
+          "type": "system_lib_string",
+          "named": true
         }
       ]
     }
@@ -1059,6 +1063,14 @@
         },
         {
           "type": "attribute_declaration",
+          "named": true
+        },
+        {
+          "type": "preproc_if",
+          "named": true
+        },
+        {
+          "type": "preproc_ifdef",
           "named": true
         },
         {
@@ -1743,6 +1755,10 @@
           "named": true
         },
         {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -2278,6 +2294,10 @@
           "named": true
         },
         {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -2780,6 +2800,10 @@
           "named": true
         },
         {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -2975,6 +2999,10 @@
           "named": true
         },
         {
+          "type": "pragma_operator",
+          "named": true
+        },
+        {
           "type": "preproc_call",
           "named": true
         },
@@ -3082,6 +3110,10 @@
         "types": [
           {
             "type": "->",
+            "named": false
+          },
+          {
+            "type": "->*",
             "named": false
           },
           {
@@ -4128,6 +4160,14 @@
         {
           "type": "initializer_pair",
           "named": true
+        },
+        {
+          "type": "preproc_if",
+          "named": true
+        },
+        {
+          "type": "preproc_ifdef",
+          "named": true
         }
       ]
     }
@@ -4643,7 +4683,7 @@
     "fields": {
       "length": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "expression",
@@ -4653,11 +4693,15 @@
       }
     },
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": false,
       "types": [
         {
           "type": "new_declarator",
+          "named": true
+        },
+        {
+          "type": "type_qualifier",
           "named": true
         }
       ]
@@ -4706,11 +4750,25 @@
         "required": true,
         "types": [
           {
+            "type": "type_descriptor",
+            "named": true
+          },
+          {
             "type": "type_specifier",
             "named": true
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "type_qualifier",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -5220,6 +5278,25 @@
     }
   },
   {
+    "type": "pragma_operator",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "raw_string_literal",
+          "named": true
+        },
+        {
+          "type": "string_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "preproc_call",
     "named": true,
     "fields": {
@@ -5360,6 +5437,10 @@
           "named": true
         },
         {
+          "type": "attribute_declaration",
+          "named": true
+        },
+        {
           "type": "concept_definition",
           "named": true
         },
@@ -5377,6 +5458,10 @@
         },
         {
           "type": "export_declaration",
+          "named": true
+        },
+        {
+          "type": "expression",
           "named": true
         },
         {
@@ -5400,6 +5485,14 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
+          "named": true
+        },
+        {
           "type": "linkage_specification",
           "named": true
         },
@@ -5413,6 +5506,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -5520,6 +5617,10 @@
           "named": true
         },
         {
+          "type": "attribute_declaration",
+          "named": true
+        },
+        {
           "type": "concept_definition",
           "named": true
         },
@@ -5537,6 +5638,10 @@
         },
         {
           "type": "export_declaration",
+          "named": true
+        },
+        {
+          "type": "expression",
           "named": true
         },
         {
@@ -5560,6 +5665,14 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
+          "named": true
+        },
+        {
           "type": "linkage_specification",
           "named": true
         },
@@ -5573,6 +5686,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -5651,6 +5768,10 @@
           "named": true
         },
         {
+          "type": "attribute_declaration",
+          "named": true
+        },
+        {
           "type": "concept_definition",
           "named": true
         },
@@ -5668,6 +5789,10 @@
         },
         {
           "type": "export_declaration",
+          "named": true
+        },
+        {
+          "type": "expression",
           "named": true
         },
         {
@@ -5691,6 +5816,14 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
+          "named": true
+        },
+        {
           "type": "linkage_specification",
           "named": true
         },
@@ -5704,6 +5837,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -5875,6 +6012,10 @@
           "named": true
         },
         {
+          "type": "attribute_declaration",
+          "named": true
+        },
+        {
           "type": "concept_definition",
           "named": true
         },
@@ -5892,6 +6033,10 @@
         },
         {
           "type": "export_declaration",
+          "named": true
+        },
+        {
+          "type": "expression",
           "named": true
         },
         {
@@ -5915,6 +6060,14 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
+          "named": true
+        },
+        {
           "type": "linkage_specification",
           "named": true
         },
@@ -5928,6 +6081,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -6035,6 +6192,10 @@
           "named": true
         },
         {
+          "type": "attribute_declaration",
+          "named": true
+        },
+        {
           "type": "concept_definition",
           "named": true
         },
@@ -6052,6 +6213,10 @@
         },
         {
           "type": "export_declaration",
+          "named": true
+        },
+        {
+          "type": "expression",
           "named": true
         },
         {
@@ -6075,6 +6240,14 @@
           "named": true
         },
         {
+          "type": "initializer_list",
+          "named": true
+        },
+        {
+          "type": "initializer_pair",
+          "named": true
+        },
+        {
           "type": "linkage_specification",
           "named": true
         },
@@ -6088,6 +6261,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -7060,7 +7237,7 @@
     "fields": {
       "declarator": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "_declarator",
@@ -7395,6 +7572,10 @@
         },
         {
           "type": "namespace_definition",
+          "named": true
+        },
+        {
+          "type": "pragma_operator",
           "named": true
         },
         {
@@ -8276,6 +8457,10 @@
   },
   {
     "type": "_Noreturn",
+    "named": false
+  },
+  {
+    "type": "_Pragma",
     "named": false
   },
   {

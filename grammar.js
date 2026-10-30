@@ -53,13 +53,17 @@ const ASSIGNMENT_OPERATORS = [
 const commaSep = C.commaSep;
 const commaSep1 = C.commaSep1;
 const preprocIf = C.preprocIf;
+const preprocessor = C.preprocessor;
 
-module.exports = grammar(C, {
+module.exports = withDigraphs(grammar(C, {
   name: 'cpp',
 
   externals: $ => [
     $.raw_string_delimiter,
     $.raw_string_content,
+    // The digraphs `<:` and `<:<:` of `[` and `[[`, see `withDigraphs`
+    $._digraph_open_bracket,
+    $._digraph_open_attribute,
   ],
 
   conflicts: $ => [
@@ -84,7 +88,6 @@ module.exports = grammar(C, {
     [$._type_declarator, $.type_specifier],
     [$.template_type, $.qualified_type_identifier],
     [$.qualified_type_identifier, $.qualified_identifier],
-    [$.comma_expression, $.initializer_list],
     [$.expression, $._declarator],
     [$.expression, $.structured_binding_declarator],
     [$.expression, $._declarator, $.type_specifier],
@@ -107,6 +110,22 @@ module.exports = grammar(C, {
     [$.qualified_field_identifier, $.template_method, $.template_type],
     [$.type_specifier, $.template_type, $.template_function, $.expression],
     [$.splice_type_specifier, $.splice_expression],
+
+    // Bit-field width followed by a braced initializer: `int a : N{2};`
+    [$.expression, $._class_name],
+    [$.type_specifier, $._class_name],
+    [$.type_specifier, $.expression, $._class_name],
+    [$.type_specifier, $.compound_literal_expression],
+    [$.type_specifier, $.compound_literal_expression, $._class_name],
+
+    // Preprocessor blocks inside braced initializers, where `{ #if` may also
+    // start a compound statement
+    [$.comma_expression, $._initializer_list_item],
+    [$.preproc_if_in_block, $.preproc_if_in_initializer_list],
+    [$.preproc_ifdef_in_block, $.preproc_ifdef_in_initializer_list],
+    [$.preproc_else_in_block, $.preproc_else_in_initializer_list],
+    [$.preproc_elif_in_block, $.preproc_elif_in_initializer_list],
+    [$.preproc_elifdef_in_block, $.preproc_elifdef_in_initializer_list],
   ],
 
   inline: ($, original) => original.concat([
@@ -138,6 +157,8 @@ module.exports = grammar(C, {
       alias($.constructor_or_destructor_definition, $.function_definition),
       alias($.operator_cast_definition, $.function_definition),
       alias($.operator_cast_declaration, $.declaration),
+      alias($.deduction_guide_declaration, $.declaration),
+      $.pragma_operator,
     ),
 
     _block_item: ($, original) => choice(
@@ -161,10 +182,31 @@ module.exports = grammar(C, {
       alias($.constructor_or_destructor_definition, $.function_definition),
       alias($.operator_cast_definition, $.function_definition),
       alias($.operator_cast_declaration, $.declaration),
+      alias($.deduction_guide_declaration, $.declaration),
+      $.pragma_operator,
     ),
 
     ...preprocIf('', $ => $._top_level_item),
     ...preprocIf('_in_block', $ => $._block_item),
+
+    preproc_scoped_identifier: $ => seq(
+      field('scope', alias($.identifier, $.namespace_identifier)),
+      '::',
+      field('name', $.identifier),
+    ),
+
+    // `#if __has_include(<optional>)`, `#if __has_include("config.h")`
+    preproc_argument_list: $ => seq(
+      '(',
+      commaSep(choice(
+        $._preproc_expression,
+        $.string_literal,
+        $.system_lib_string,
+        // `__has_cpp_attribute(gnu::always_inline)`
+        alias($.preproc_scoped_identifier, $.qualified_identifier),
+      )),
+      ')',
+    ),
 
     // Types
 
@@ -279,7 +321,12 @@ module.exports = grammar(C, {
       members: original.members.map(
         (e) => e.name !== 'body' ?
           e :
-          field('body', choice(e.content, $.try_statement))),
+          choice(
+            field('body', choice(e.content, $.try_statement)),
+            // `void f(int) = delete;`, `friend bool operator==(...) = default;`
+            $.default_method_clause,
+            $.delete_method_clause,
+          )),
     }),
 
     declaration: $ => seq(
@@ -319,17 +366,73 @@ module.exports = grammar(C, {
 
     base_class_clause: $ => seq(
       ':',
-      commaSep1(seq(
-        repeat($.attribute_declaration),
-        optional(choice(
-          $.access_specifier,
-          seq($.access_specifier, optional('virtual')),
-          seq('virtual', optional($.access_specifier)),
-        )),
-        $._class_name,
-        optional('...'),
+      // `#ifdef X` / `public D,` / `#endif` before the first base class
+      repeat(choice(
+        alias($.preproc_if_in_base_class_clause_trailing_comma, $.preproc_if),
+        alias($.preproc_ifdef_in_base_class_clause_trailing_comma, $.preproc_ifdef),
+      )),
+      $._base_class_specifier,
+      repeat(choice(
+        seq(',', $._base_class_specifier),
+        // `#ifdef X` / `, public D` / `#endif`
+        alias($.preproc_if_in_base_class_clause, $.preproc_if),
+        alias($.preproc_ifdef_in_base_class_clause, $.preproc_ifdef),
       )),
     ),
+
+    _base_class_specifier: $ => seq(
+      repeat($.attribute_declaration),
+      optional(choice(
+        $.access_specifier,
+        seq($.access_specifier, optional('virtual')),
+        seq('virtual', optional($.access_specifier)),
+      )),
+      $._class_name,
+      optional('...'),
+    ),
+
+    ...preprocIf('_in_base_class_clause', $ => seq(',', $._base_class_specifier)),
+    ...preprocIf('_in_base_class_clause_trailing_comma', $ => seq($._base_class_specifier, ',')),
+
+    // Same as in C, but conditional preprocessor blocks may appear between
+    // the elements, e.g. `{ 1, #if X 2, #endif 3 }`.
+    initializer_list: $ => seq(
+      '{',
+      repeat(choice(
+        seq($._initializer_list_item, ','),
+        alias($.preproc_if_in_initializer_list, $.preproc_if),
+        alias($.preproc_ifdef_in_initializer_list, $.preproc_ifdef),
+      )),
+      optional(seq(
+        choice(
+          $._initializer_list_item,
+          alias($.preproc_if_in_initializer_list_no_comma, $.preproc_if),
+          alias($.preproc_ifdef_in_initializer_list_no_comma, $.preproc_ifdef),
+        ),
+        repeat(choice(
+          alias($.preproc_if_in_initializer_list_leading_comma, $.preproc_if),
+          alias($.preproc_ifdef_in_initializer_list_leading_comma, $.preproc_ifdef),
+        )),
+      )),
+      '}',
+    ),
+
+    _initializer_list_item: $ => choice(
+      $.initializer_pair,
+      $.expression,
+      $.initializer_list,
+    ),
+
+    // `#if X` / `2,` / `#endif`
+    ...preprocIf('_in_initializer_list', $ => seq($._initializer_list_item, ',')),
+    // `#if X` / `2, 3` / `#else` / `4` / `#endif` as the last elements
+    ...preprocIfBody(
+      '_in_initializer_list_no_comma',
+      $ => seq(repeat(seq($._initializer_list_item, ',')), $._initializer_list_item),
+      -1,
+    ),
+    // `1` / `#if X` / `, 2` / `#endif`
+    ...preprocIf('_in_initializer_list_leading_comma', $ => seq(',', $._initializer_list_item)),
 
     enum_specifier: $ => prec.right(seq(
       'enum',
@@ -442,8 +545,11 @@ module.exports = grammar(C, {
     template_instantiation: $ => prec(1, seq(
       optional('extern'),
       'template',
-      optional($._declaration_specifiers),
-      field('declarator', $._declarator),
+      choice(
+        // `template void f<int>(int);`, `template struct S<int>;`
+        seq($._declaration_specifiers, optional(field('declarator', $._declarator))),
+        field('declarator', $._declarator),
+      ),
       ';',
     )),
 
@@ -582,18 +688,29 @@ module.exports = grammar(C, {
       $.type_definition,
       $.static_assert_declaration,
       $.consteval_block_declaration,
+      $.pragma_operator,
       ';',
     ),
 
     field_declaration: $ => seq(
       $._declaration_specifiers,
-      commaSep(seq(
-        field('declarator', $._field_declarator),
-        optional(choice(
-          $.bitfield_clause,
-          field('default_value', $.initializer_list),
-          seq('=', field('default_value', choice($.expression, $.initializer_list))),
-        )),
+      commaSep(choice(
+        seq(
+          field('declarator', $._field_declarator),
+          optional(choice(
+            // C++20: bit-field with a default member initializer, `int a : 3 = 1;`
+            // When the width is a name, `int a : N{2};` is ambiguous; the standard
+            // takes the longest width, so `N{2}` stays the width.
+            seq($.bitfield_clause, optional(choice(
+              prec.dynamic(-1, field('default_value', $.initializer_list)),
+              seq('=', field('default_value', choice($.expression, $.initializer_list))),
+            ))),
+            field('default_value', $.initializer_list),
+            seq('=', field('default_value', choice($.expression, $.initializer_list))),
+          )),
+        ),
+        // unnamed bit-field: `int : 0;`
+        $.bitfield_clause,
       )),
       optional($.attribute_specifier),
       ';',
@@ -660,6 +777,22 @@ module.exports = grammar(C, {
       repeat($._constructor_specifiers),
       field('declarator', $.function_declarator),
       ';',
+    ),
+
+    // Deduction guide outside a template: `S(const char *) -> S<std::string>;`
+    // Low dynamic precedence, so that `FOO(x);` at file scope stays a call.
+    deduction_guide_declaration: $ => prec.dynamic(-10, seq(
+      repeat($._constructor_specifiers),
+      field('declarator', $.function_declarator),
+      ';',
+    )),
+
+    // `_Pragma("once")`
+    pragma_operator: $ => seq(
+      '_Pragma',
+      '(',
+      choice($.string_literal, $.raw_string_literal),
+      ')',
     ),
 
     default_method_clause: _ => seq('=', 'default', ';'),
@@ -873,12 +1006,14 @@ module.exports = grammar(C, {
             $.splice_type_specifier,
           ),
         ),
-        commaSep1(
+        commaSep1(seq(
           choice(
             $.identifier,
             $.qualified_identifier,
           ),
-        ),
+          // `using Ts::operator()...;`
+          optional('...'),
+        )),
       ),
       ';',
     ),
@@ -1151,19 +1286,31 @@ module.exports = grammar(C, {
       optional('::'),
       'new',
       field('placement', optional($.argument_list)),
-      field('type', $.type_specifier),
-      field('declarator', optional($.new_declarator)),
+      choice(
+        seq(
+          // `new const int(5)`
+          repeat($.type_qualifier),
+          field('type', $.type_specifier),
+          field('declarator', optional($.new_declarator)),
+        ),
+        // `new (int *[5])`
+        seq('(', field('type', $.type_descriptor), ')'),
+      ),
       field('arguments', optional(choice(
         $.argument_list,
         $.initializer_list,
       ))),
     )),
 
-    new_declarator: $ => prec.right(seq(
-      '[',
-      field('length', $.expression),
-      ']',
-      optional($.new_declarator),
+    new_declarator: $ => prec.right(choice(
+      seq(
+        '[',
+        field('length', $.expression),
+        ']',
+        optional($.new_declarator),
+      ),
+      // `new int*[5]`, `new char**`
+      seq('*', repeat($.type_qualifier), optional($.new_declarator)),
     )),
 
     delete_expression: $ => seq(
@@ -1176,7 +1323,7 @@ module.exports = grammar(C, {
     field_expression: $ => seq(
       prec(PREC.FIELD, seq(
         field('argument', $.expression),
-        field('operator', choice('.', '.*', '->')),
+        field('operator', choice('.', '.*', '->', '->*')),
       )),
       field('field', choice(
         prec.dynamic(1, $._field_identifier),
@@ -1473,6 +1620,7 @@ module.exports = grammar(C, {
         alias($.qualified_field_identifier, $.qualified_identifier),
         $.template_method,
         prec.dynamic(2, $._field_identifier),
+        $.destructor_name,
       )),
     ),
 
@@ -1666,4 +1814,124 @@ module.exports = grammar(C, {
 
     _namespace_identifier: $ => alias($.identifier, $.namespace_identifier),
   },
-});
+}));
+
+/**
+ * Like `preprocIf` from tree-sitter-c, but every branch matches `body` exactly
+ * once instead of repeating a content rule, so a branch can require its
+ * elements to be separated by commas.
+ *
+ * @param {string} suffix
+ * @param {RuleBuilder<string>} body
+ * @param {number} precedence
+ * @returns {RuleBuilders<string, string>}
+ */
+function preprocIfBody(suffix, body, precedence = 0) {
+  const alternativeBlock = ($) => choice(
+    alias($['preproc_else' + suffix], $.preproc_else),
+    alias($['preproc_elif' + suffix], $.preproc_elif),
+    alias($['preproc_elifdef' + suffix], $.preproc_elifdef),
+  );
+
+  return {
+    ['preproc_if' + suffix]: $ => prec(precedence, seq(
+      preprocessor('if'),
+      field('condition', $._preproc_expression),
+      '\n',
+      body($),
+      field('alternative', optional(alternativeBlock($))),
+      preprocessor('endif'),
+    )),
+
+    ['preproc_ifdef' + suffix]: $ => prec(precedence, seq(
+      choice(preprocessor('ifdef'), preprocessor('ifndef')),
+      field('name', $.identifier),
+      body($),
+      field('alternative', optional(alternativeBlock($))),
+      preprocessor('endif'),
+    )),
+
+    ['preproc_else' + suffix]: $ => prec(precedence, seq(
+      preprocessor('else'),
+      body($),
+    )),
+
+    ['preproc_elif' + suffix]: $ => prec(precedence, seq(
+      preprocessor('elif'),
+      field('condition', $._preproc_expression),
+      '\n',
+      body($),
+      field('alternative', optional(alternativeBlock($))),
+    )),
+
+    ['preproc_elifdef' + suffix]: $ => prec(precedence, seq(
+      choice(preprocessor('elifdef'), preprocessor('elifndef')),
+      field('name', $.identifier),
+      body($),
+      field('alternative', optional(alternativeBlock($))),
+    )),
+  };
+}
+
+/**
+ * Adds the alternative tokens (digraphs) `<:` `:>` `<%` `%>` and `%:` to every
+ * bracket, brace and preprocessor directive of the grammar, including the
+ * rules inherited from tree-sitter-c. Each digraph is aliased to the token it
+ * stands for, so `a<:0:>` produces the same tree as `a[0]`.
+ *
+ * `<:` and `<:<:` come from the external scanner, because `<::` must stay `<`
+ * `::` unless it is followed by `:` or `>` ([lex.pptoken]), e.g. in
+ * `std::vector<::std::string>`. The plain `[` and `[[` stay regular tokens, so
+ * longer tokens such as `[]` and `[:` still win.
+ *
+ * @param {object} result the value returned by `grammar()`
+ * @returns {object} the same value, with the digraphs added
+ */
+function withDigraphs(result) {
+  const string = (value) => ({type: 'STRING', value});
+  const alias = (value, content) => ({type: 'ALIAS', content, named: false, value});
+  const either = (value, digraph) => alias(value, {
+    type: 'TOKEN',
+    content: {type: 'CHOICE', members: [string(value), string(digraph)]},
+  });
+  const external = (value, name) => ({
+    type: 'CHOICE',
+    members: [string(value), alias(value, {type: 'SYMBOL', name})],
+  });
+  const replacements = {
+    '[': external('[', '_digraph_open_bracket'),
+    '[[': external('[[', '_digraph_open_attribute'),
+    ']': either(']', ':>'),
+    ']]': either(']]', ':>:>'),
+    '{': either('{', '<%'),
+    '}': either('}', '%>'),
+  };
+
+  const visit = (rule, inToken) => {
+    if (!rule || typeof rule !== 'object') {
+      return rule;
+    }
+    if (rule.type === 'STRING' && !inToken && rule.value in replacements) {
+      return replacements[rule.value];
+    }
+    if (rule.type === 'PATTERN' && rule.value.startsWith('#')) {
+      // `#include` -> `%:include`
+      return {...rule, value: '(#|%:)' + rule.value.slice(1)};
+    }
+    const tokenized = inToken || rule.type === 'TOKEN' || rule.type === 'IMMEDIATE_TOKEN';
+    const copy = {...rule};
+    if (rule.content) {
+      copy.content = visit(rule.content, tokenized);
+    }
+    if (rule.members) {
+      copy.members = rule.members.map((member) => visit(member, tokenized));
+    }
+    return copy;
+  };
+
+  const rules = result.grammar.rules;
+  for (const name of Object.keys(rules)) {
+    rules[name] = visit(rules[name], false);
+  }
+  return result;
+}

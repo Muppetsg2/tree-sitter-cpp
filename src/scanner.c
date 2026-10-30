@@ -5,7 +5,7 @@
 #include <string.h>
 #include <wctype.h>
 
-enum TokenType { RAW_STRING_DELIMITER, RAW_STRING_CONTENT };
+enum TokenType { RAW_STRING_DELIMITER, RAW_STRING_CONTENT, DIGRAPH_OPEN_BRACKET, DIGRAPH_OPEN_ATTRIBUTE };
 
 /// The spec limits delimiters to 16 chars
 #define MAX_DELIMITER_LENGTH 16
@@ -94,6 +94,45 @@ static bool scan_raw_string_content(Scanner *scanner, TSLexer *lexer) {
     }
 }
 
+/// Scan the digraphs `<:` (for `[`) and `<:<:` (for `[[`).
+/// Per [lex.pptoken], `<::` is `<` followed by `::` unless the next character
+/// is `:` or `>`, so `std::vector<::std::string>` keeps its template brackets.
+static bool scan_digraph_open_bracket(TSLexer *lexer, const bool *valid_symbols) {
+    while (iswspace(lexer->lookahead)) {
+        lexer->advance(lexer, true);
+    }
+    if (lexer->lookahead != '<') {
+        return false;
+    }
+    advance(lexer);
+    if (lexer->lookahead != ':') {
+        return false;
+    }
+    advance(lexer);
+    lexer->mark_end(lexer);
+
+    if (lexer->lookahead == ':') {
+        advance(lexer);
+        if (lexer->lookahead != ':' && lexer->lookahead != '>') {
+            return false;
+        }
+    } else if (lexer->lookahead == '<' && valid_symbols[DIGRAPH_OPEN_ATTRIBUTE]) {
+        advance(lexer);
+        if (lexer->lookahead == ':') {
+            advance(lexer);
+            lexer->mark_end(lexer);
+            lexer->result_symbol = DIGRAPH_OPEN_ATTRIBUTE;
+            return true;
+        }
+    }
+
+    if (!valid_symbols[DIGRAPH_OPEN_BRACKET]) {
+        return false;
+    }
+    lexer->result_symbol = DIGRAPH_OPEN_BRACKET;
+    return true;
+}
+
 void *tree_sitter_cpp_external_scanner_create() {
     Scanner *scanner = (Scanner *)ts_calloc(1, sizeof(Scanner));
     memset(scanner, 0, sizeof(Scanner));
@@ -117,6 +156,10 @@ bool tree_sitter_cpp_external_scanner_scan(void *payload, TSLexer *lexer, const 
     if (valid_symbols[RAW_STRING_CONTENT]) {
         lexer->result_symbol = RAW_STRING_CONTENT;
         return scan_raw_string_content(scanner, lexer);
+    }
+
+    if (valid_symbols[DIGRAPH_OPEN_BRACKET] || valid_symbols[DIGRAPH_OPEN_ATTRIBUTE]) {
+        return scan_digraph_open_bracket(lexer, valid_symbols);
     }
 
     return false;

@@ -2202,22 +2202,21 @@ struct A {
               (abstract_reference_declarator))))
         (default_method_clause))
       (friend_declaration
-        (declaration
+        (function_definition
           (placeholder_type_specifier
             (auto))
-          (init_declarator
-            (function_declarator
-              (operator_name)
-              (parameter_list
-                (parameter_declaration
-                  (type_identifier)
-                  (type_qualifier)
-                  (abstract_reference_declarator))
-                (parameter_declaration
-                  (type_identifier)
-                  (type_qualifier)
-                  (abstract_reference_declarator))))
-            (identifier)))))))
+          (function_declarator
+            (operator_name)
+            (parameter_list
+              (parameter_declaration
+                (type_identifier)
+                (type_qualifier)
+                (abstract_reference_declarator))
+              (parameter_declaration
+                (type_identifier)
+                (type_qualifier)
+                (abstract_reference_declarator))))
+          (default_method_clause))))))
 
 ================================================================================
 Pointers in qualified identifiers and field expressions
@@ -2521,3 +2520,285 @@ inline constexpr MyEnum operator|(MyEnum bit0, MyEnum bit1) noexcept
         (argument_list
           (identifier))))
     (compound_statement)))
+
+================================================================================
+Explicit instantiation of class templates
+================================================================================
+
+template struct S<long>;
+template class std::vector<int>;
+extern template class std::basic_string<char>;
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (template_instantiation
+    (struct_specifier
+      (template_type
+        (type_identifier)
+        (template_argument_list
+          (type_descriptor
+            (sized_type_specifier))))))
+  (template_instantiation
+    (class_specifier
+      (qualified_identifier
+        (namespace_identifier)
+        (template_type
+          (type_identifier)
+          (template_argument_list
+            (type_descriptor
+              (primitive_type)))))))
+  (template_instantiation
+    (class_specifier
+      (qualified_identifier
+        (namespace_identifier)
+        (template_type
+          (type_identifier)
+          (template_argument_list
+            (type_descriptor
+              (primitive_type))))))))
+
+================================================================================
+Deleted and defaulted functions at namespace scope
+================================================================================
+
+void f(int) = delete;
+template <class T> void g(T) = delete;
+
+struct S {
+  friend bool operator==(const S &, const S &) = default;
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type))))
+    (delete_method_clause))
+  (template_declaration
+    (template_parameter_list
+      (type_parameter_declaration
+        (type_identifier)))
+    (function_definition
+      (primitive_type)
+      (function_declarator
+        (identifier)
+        (parameter_list
+          (parameter_declaration
+            (type_identifier))))
+      (delete_method_clause)))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (friend_declaration
+        (function_definition
+          (primitive_type)
+          (function_declarator
+            (operator_name)
+            (parameter_list
+              (parameter_declaration
+                (type_qualifier)
+                (type_identifier)
+                (abstract_reference_declarator))
+              (parameter_declaration
+                (type_qualifier)
+                (type_identifier)
+                (abstract_reference_declarator))))
+          (default_method_clause))))))
+
+================================================================================
+Deduction guides without a template
+================================================================================
+
+S(const char *) -> S<std::string>;
+
+namespace n {
+explicit S(int) -> S<long>;
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (declaration
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (type_qualifier)
+          (primitive_type)
+          (abstract_pointer_declarator)))
+      (trailing_return_type
+        (type_descriptor
+          (template_type
+            (type_identifier)
+            (template_argument_list
+              (type_descriptor
+                (qualified_identifier
+                  (namespace_identifier)
+                  (type_identifier)))))))))
+  (namespace_definition
+    (namespace_identifier)
+    (declaration_list
+      (declaration
+        (explicit_function_specifier)
+        (function_declarator
+          (identifier)
+          (parameter_list
+            (parameter_declaration
+              (primitive_type)))
+          (trailing_return_type
+            (type_descriptor
+              (template_type
+                (type_identifier)
+                (template_argument_list
+                  (type_descriptor
+                    (sized_type_specifier)))))))))))
+
+================================================================================
+Unnamed bit-fields and bit-field initializers
+================================================================================
+
+struct B {
+  unsigned flag : 1;
+  int : 0;
+  unsigned : 4, rest : 3;
+  int value : 8 = 42;
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (sized_type_specifier)
+        (field_identifier)
+        (bitfield_clause
+          (number_literal)))
+      (field_declaration
+        (primitive_type)
+        (bitfield_clause
+          (number_literal)))
+      (field_declaration
+        (sized_type_specifier)
+        (bitfield_clause
+          (number_literal))
+        (field_identifier)
+        (bitfield_clause
+          (number_literal)))
+      (field_declaration
+        (primitive_type)
+        (field_identifier)
+        (bitfield_clause
+          (number_literal))
+        (number_literal)))))
+
+================================================================================
+Pack expansion in using-declarations
+================================================================================
+
+template <class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (template_declaration
+    (template_parameter_list
+      (variadic_type_parameter_declaration
+        (type_identifier)))
+    (struct_specifier
+      (type_identifier)
+      (base_class_clause
+        (type_identifier))
+      (field_declaration_list
+        (using_declaration
+          (qualified_identifier
+            (namespace_identifier)
+            (operator_name)))))))
+
+================================================================================
+Pragma operator
+================================================================================
+
+_Pragma("once")
+
+struct S {
+  _Pragma("pack(1)")
+  int x;
+};
+
+void f() {
+  _Pragma("omp parallel")
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (pragma_operator
+    (string_literal
+      (string_content)))
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (pragma_operator
+        (string_literal
+          (string_content)))
+      (field_declaration
+        (primitive_type)
+        (field_identifier))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (pragma_operator
+        (string_literal
+          (string_content))))))
+
+================================================================================
+Bit-fields with braced initializers
+================================================================================
+
+struct S {
+  int a : 4 {2};
+  int b : N{3};
+  int c : 3 = 1;
+};
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (struct_specifier
+    (type_identifier)
+    (field_declaration_list
+      (field_declaration
+        (primitive_type)
+        (field_identifier)
+        (bitfield_clause
+          (number_literal))
+        (initializer_list
+          (number_literal)))
+      (field_declaration
+        (primitive_type)
+        (field_identifier)
+        (bitfield_clause
+          (compound_literal_expression
+            (type_identifier)
+            (initializer_list
+              (number_literal)))))
+      (field_declaration
+        (primitive_type)
+        (field_identifier)
+        (bitfield_clause
+          (number_literal))
+        (number_literal)))))
