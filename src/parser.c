@@ -11,7 +11,7 @@
 #elif defined(__clang__)
 #pragma clang optimize off
 #elif defined(__GNUC__)
-#pragma GCC optimize ("O0")
+#pragma GCC optimize ("O0", "jump-tables")
 #endif
 
 #define LANGUAGE_VERSION 15
@@ -870739,8 +870739,8 @@ TS_PUBLIC const TSLanguage *tree_sitter_cpp(void) {
     .max_reserved_word_set_size = 0,
     .metadata = {
       .major_version = 0,
-      .minor_version = 23,
-      .patch_version = 6,
+      .minor_version = 27,
+      .patch_version = 1,
     },
   };
   return &language;

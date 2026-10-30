@@ -334,7 +334,7 @@ module.exports = grammar(C, {
     enum_specifier: $ => prec.right(seq(
       'enum',
       optional(choice('class', 'struct')),
-	    repeat($.attribute_declaration),
+      repeat($.attribute_declaration),
       choice(
         seq(
           field('name', $._class_name),
@@ -346,7 +346,7 @@ module.exports = grammar(C, {
       optional($.attribute_specifier),
     )),
 
-	enumerator: $ => seq(
+    enumerator: $ => seq(
       field('name', $.identifier),
       repeat($.attribute_declaration),
       optional(seq(
@@ -868,9 +868,9 @@ module.exports = grammar(C, {
         seq(
           choice('namespace', 'enum'),
           choice(
-              $.identifier,
-              $.qualified_identifier,
-              $.splice_type_specifier,
+            $.identifier,
+            $.qualified_identifier,
+            $.splice_type_specifier,
           ),
         ),
         commaSep1(

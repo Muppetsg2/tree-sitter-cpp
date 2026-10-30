@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(tree-sitter-cpp
-        VERSION "0.23.6"
+        VERSION "0.27.1"
         DESCRIPTION "C++ grammar for tree-sitter"
         HOMEPAGE_URL "https://github.com/tree-sitter/tree-sitter-cpp"
         LANGUAGES C)
