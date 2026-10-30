@@ -652,3 +652,109 @@ void foo() {
             (operator_name))
           (argument_list
             (number_literal)))))))
+
+================================================================================
+C++23 if consteval
+================================================================================
+
+constexpr int f(int x) {
+  if consteval {
+    return x;
+  } else {
+    return x + 1;
+  }
+  if !consteval {
+    x++;
+  }
+  if consteval {
+  } else if (x) {
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (type_qualifier)
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (if_statement
+        (compound_statement
+          (return_statement
+            (identifier)))
+        (else_clause
+          (compound_statement
+            (return_statement
+              (binary_expression
+                (identifier)
+                (number_literal))))))
+      (if_statement
+        (compound_statement
+          (expression_statement
+            (update_expression
+              (identifier)))))
+      (if_statement
+        (compound_statement)
+        (else_clause
+          (if_statement
+            (condition_clause
+              (identifier))
+            (compound_statement)))))))
+
+================================================================================
+C++23 labels at the end of compound statements
+================================================================================
+
+void f(int x) {
+  if (x) goto end;
+  x++;
+end:
+}
+
+void g() {
+  { inner: }
+first:
+second:
+}
+
+--------------------------------------------------------------------------------
+
+(translation_unit
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list
+        (parameter_declaration
+          (primitive_type)
+          (identifier))))
+    (compound_statement
+      (if_statement
+        (condition_clause
+          (identifier))
+        (goto_statement
+          (statement_identifier)))
+      (expression_statement
+        (update_expression
+          (identifier)))
+      (labeled_statement
+        (statement_identifier))))
+  (function_definition
+    (primitive_type)
+    (function_declarator
+      (identifier)
+      (parameter_list))
+    (compound_statement
+      (compound_statement
+        (labeled_statement
+          (statement_identifier)))
+      (labeled_statement
+        (statement_identifier)
+        (labeled_statement
+          (statement_identifier))))))

@@ -1259,6 +1259,10 @@
         "required": true,
         "types": [
           {
+            "type": "auto",
+            "named": true
+          },
+          {
             "type": "expression",
             "named": true
           },
@@ -1625,6 +1629,10 @@
         "multiple": true,
         "required": true,
         "types": [
+          {
+            "type": "auto",
+            "named": true
+          },
           {
             "type": "primitive_type",
             "named": true
@@ -3970,7 +3978,7 @@
       },
       "condition": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "condition_clause",
@@ -4183,7 +4191,7 @@
     },
     "children": {
       "multiple": false,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "declaration",

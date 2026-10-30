@@ -953,10 +953,27 @@ module.exports = grammar(C, {
 
     if_statement: $ => prec.right(seq(
       'if',
-      optional('constexpr'),
-      field('condition', $.condition_clause),
-      field('consequence', $.statement),
+      choice(
+        seq(
+          optional('constexpr'),
+          field('condition', $.condition_clause),
+          field('consequence', $.statement),
+        ),
+        // C++23: `if consteval { ... }` and `if !consteval { ... }`
+        seq(
+          optional('!'),
+          'consteval',
+          field('consequence', $.compound_statement),
+        ),
+      ),
       optional(field('alternative', $.else_clause)),
+    )),
+
+    // C++23: a label may appear at the end of a compound statement (P2324)
+    labeled_statement: $ => prec.right(seq(
+      field('label', $._statement_identifier),
+      ':',
+      optional(choice($.declaration, $.statement)),
     )),
 
     // Using prec(1) instead of prec.dynamic(1) causes issues with the
@@ -1074,6 +1091,23 @@ module.exports = grammar(C, {
       $.concatenated_string,
     ),
 
+    // Extends the C escape sequences with the C++23 delimited escapes
+    // `\o{...}`, `\x{...}`, `\u{...}` (P2290) and named escapes `\N{...}` (P2071)
+    escape_sequence: _ => token(prec(1, seq(
+      '\\',
+      choice(
+        /[^xuU]/,
+        /\d{2,3}/,
+        /x[0-9a-fA-F]{1,4}/,
+        /u[0-9a-fA-F]{4}/,
+        /U[0-9a-fA-F]{8}/,
+        /o\{[0-7]+\}/,
+        /x\{[0-9a-fA-F]+\}/,
+        /u\{[0-9a-fA-F]+\}/,
+        /N\{[^}\n]+\}/,
+      ),
+    ))),
+
     raw_string_literal: $ => seq(
       choice('R"', 'LR"', 'uR"', 'UR"', 'u8R"'),
       choice(
@@ -1101,7 +1135,7 @@ module.exports = grammar(C, {
     ),
 
     call_expression: ($, original) => prec.dynamic(1, choice(original, seq(
-      field('function', choice($.primitive_type, seq(
+      field('function', choice($.primitive_type, $.auto, seq(
         optional('typename'),
         $.splice_type_specifier,
       ))),
@@ -1410,6 +1444,7 @@ module.exports = grammar(C, {
         field('type', choice(
           $._class_name,
           $.primitive_type,
+          $.auto,
           seq(optional('typename'), $.splice_type_specifier))),
         field('value', $.initializer_list),
       ),
